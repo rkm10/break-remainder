@@ -21,6 +21,10 @@ export default function LoginHoursSettings({
     loginHours,
     handleLoginHoursSave,
     handleLoginHoursChange,
+    breakNotifications,
+    handleBreakNotificationsChange,
+
+
 }) {
     return (
         <Box
@@ -91,6 +95,29 @@ export default function LoginHoursSettings({
                             value={loginHours.saturday}
                             onChange={handleLoginHoursChange}
                             inputProps={{ min: 0 }}
+                            fullWidth
+                            variant="outlined"
+                            sx={{
+                                '& .MuiInputLabel-root': {
+                                    color: 'text.primary',
+                                },
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '8px',
+                                },
+                                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)',
+                                transition: 'all 0.3s ease',
+                                ':hover': {
+                                    boxShadow: '0px 6px 16px rgba(0, 0, 0, 0.3)',
+                                },
+                            }}
+                        />
+                        <TextField
+                            label="Break Remainder in minutes"
+                            type="number"
+                            name="breakNotifications"
+                            value={breakNotifications}
+                            onChange={handleBreakNotificationsChange}
+                            inputProps={{ min: 1 }}
                             fullWidth
                             variant="outlined"
                             sx={{

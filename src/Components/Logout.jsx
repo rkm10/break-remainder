@@ -1,5 +1,6 @@
+// Logout.jsx
 import React, { useState, useEffect, useRef, lazy } from 'react';
-//Lazy loading
+// Lazy loading
 import Loadable from './Lodable';
 const SettingsSection = Loadable(lazy(() => import('./SettingsSection')));
 const CloseConfirm = Loadable(lazy(() => import('../UIComponents/ConfirmationDialog')));
@@ -13,8 +14,12 @@ import useTotalLoggedInHours from '../CustomHooks/useTotalLoggedInHours';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 
+// Import the audio file
+import notificationSound from '../assets/notification.wav';
+import logoutSound from '../assets/logout.wav';
+
 /**
- * A component for which renders all the other main componennts inside with all the logic.
+ * A component that renders all the other main components inside with all the logic.
  * @param {boolean} darkMode - Indicates whether dark mode is currently enabled.
  * @param {Function} handleThemeToggle - Function to toggle the theme mode.
  */
@@ -37,10 +42,24 @@ export default function Logout({ darkMode, handleThemeToggle }) {
     const [editedLoginTime, setEditedLoginTime] = useState('');
     const [effectiveLoginTime, setEffectiveLoginTime] = useState('00:00:00');
 
+    // Initialize breakNotifications from localStorage or default to 10 minutes
+    const [breakNotifications, setBreakNotifications] = useState(() => {
+        const saved = localStorage.getItem('breakNotifications');
+        return saved ? parseInt(saved, 10) : 10; // Default to 10 minutes
+    });
+
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [confirmCallback, setConfirmCallback] = useState(null);
 
     const timerRef = useRef(null);
+
+    // Initialize the audio and notification tracker
+    const notificationAudioRef = useRef(new Audio(notificationSound));
+    const hasPlayedNotificationRef = useRef(false);
+
+
+    const logoutNotificationAudioRef = useRef(new Audio(notificationSound));
+    const logoutHasPlayedNotificationRef = useRef(false);
 
     useEffect(() => {
         // Load saved data from localStorage on component mount
@@ -48,6 +67,7 @@ export default function Logout({ darkMode, handleThemeToggle }) {
         const savedBreaks = JSON.parse(localStorage.getItem('breaks')) || [];
         const savedExpectedLogoutTime = localStorage.getItem('expectedLogoutTime');
         const savedLoginHours = JSON.parse(localStorage.getItem('loginHours')) || { weekday: 8, saturday: 5 };
+
         const breakExists = localStorage.getItem('breakStartTime');
         const savedLogoutTime = localStorage.getItem('logoutTime');
 
@@ -155,7 +175,7 @@ export default function Logout({ darkMode, handleThemeToggle }) {
         return `${hours.toString().padStart(2, '0')}h  ${minutes.toString().padStart(2, '0')}m  ${secs.toString().padStart(2, '0')}s`;
     };
 
-    /**Function close Record exists dialouge */
+    /** Function to close Record exists dialog */
     const handleRecordExistsDialogClose = (confirmed) => {
         setDialogOpen(false);
         if (confirmed && confirmCallback) {
@@ -163,7 +183,7 @@ export default function Logout({ darkMode, handleThemeToggle }) {
         }
     };
 
-    //Hook to get Total Logged in hours without breaks
+    // Hook to get Total Logged in hours without breaks
     const { totalLoggedInHours } = useTotalLoggedInHours(loginTime, logoutTime, breaks);
 
     /**
@@ -246,6 +266,12 @@ export default function Logout({ darkMode, handleThemeToggle }) {
      * Ends a break, calculates the break duration, updates the list of breaks and the expected logout time.
      */
     const handleBreakEnd = () => {
+        // Stop the notification audio if it's still playing
+        if (notificationAudioRef.current && !notificationAudioRef.current.paused) {
+            notificationAudioRef.current.pause();
+            notificationAudioRef.current.currentTime = 0;
+        }
+
         localStorage.removeItem('breakStartTime');
         setBreakStartedAt(null);
         if (isBreakInProgress && breakStart) {
@@ -283,6 +309,27 @@ export default function Logout({ darkMode, handleThemeToggle }) {
     const handleClearData = () => {
         setOpenDialog(true);
     };
+    /** 
+     * handle the sound notification
+     */
+    useEffect(() => {
+        if (isBreakInProgress) {
+            // Convert minutes to seconds
+            const notificationTimeInSeconds = breakNotifications * 60;
+
+            if (elapsedTime >= notificationTimeInSeconds && !hasPlayedNotificationRef.current) {
+                notificationAudioRef.current.play().catch((error) => {
+                    console.error("Error playing notification sound:", error);
+                });
+                console.log(`Notification sound played at ${breakNotifications} minutes`);
+
+                hasPlayedNotificationRef.current = true; // Ensure it doesn't play again during the same break
+            }
+        } else {
+            // Reset the notification tracker when the break ends
+            hasPlayedNotificationRef.current = false;
+        }
+    }, [elapsedTime, isBreakInProgress, breakNotifications]);
 
     /**
      * Clears all user data from localStorage except theme mode and login hours.
@@ -359,44 +406,44 @@ export default function Logout({ darkMode, handleThemeToggle }) {
             alert("Please enter a valid number of minutes.");
             return;
         }
-    
+
         const now = new Date();
         const durationInMs = minutes * 60 * 1000;
-    
+
         // Create a new break
         const newBreak = {
             start: now.toISOString(),
             end: new Date(now.getTime() + durationInMs).toISOString(),
             duration: `${minutes}m 0s`
         };
-    
+
         // Update breaks array
         const newBreaks = [...breaks, newBreak];
         setBreaks(newBreaks);
         localStorage.setItem('breaks', JSON.stringify(newBreaks));
-    
+
         // Update expected logout time if it's already set
         if (expectedLogoutTime) {
             const updatedLogoutTime = new Date(expectedLogoutTime.getTime() + durationInMs);
             setExpectedLogoutTime(updatedLogoutTime);
             localStorage.setItem('expectedLogoutTime', updatedLogoutTime.toISOString());
         }
-    
+
         // Adjust the effective login time
         const [hours, minutesEffective] = effectiveLoginTime.split(':').map(Number);
         let totalEffectiveMinutes = hours * 60 + minutesEffective;
-        
+
         // Subtract manual break duration
         totalEffectiveMinutes -= minutes;
-        
+
         // Recalculate hours and minutes
         const updatedHours = Math.floor(totalEffectiveMinutes / 60);
         const updatedMinutes = totalEffectiveMinutes % 60;
-    
+
         // Set the updated effective login time
         const newEffectiveLoginTime = `${updatedHours.toString().padStart(2, '0')}:${updatedMinutes.toString().padStart(2, '0')}`;
         setEffectiveLoginTime(newEffectiveLoginTime);
-    
+
         // Clear manual break duration input
         setManualBreakDuration('');
     };
@@ -409,22 +456,22 @@ export default function Logout({ darkMode, handleThemeToggle }) {
         const breakToRemove = breaks[index];
         const durationToRemove = breakToRemove.duration.split('m').map(part => parseInt(part, 10));
         const durationToRemoveMs = (durationToRemove[0] || 0) * 60 * 1000 + (durationToRemove[1] || 0) * 1000;
-    
+
         // Update breaks array by filtering out the removed break
         const updatedBreaks = breaks.filter((_, i) => i !== index);
         setBreaks(updatedBreaks);
         localStorage.setItem('breaks', JSON.stringify(updatedBreaks));
-    
+
         // Adjust expected logout time if it's set
         if (expectedLogoutTime) {
             const updatedLogoutTime = new Date(expectedLogoutTime.getTime() - durationToRemoveMs);
             setExpectedLogoutTime(updatedLogoutTime);
             localStorage.setItem('expectedLogoutTime', updatedLogoutTime.toISOString());
         }
-    };    
+    };
 
     /**
-     * Function to store the login hours settigs in local storage
+     * Function to store the login hours settings in local storage
      * @param {event} event - Event of change to get name and value
      */
     const handleLoginHoursChange = (event) => {
@@ -434,6 +481,24 @@ export default function Logout({ darkMode, handleThemeToggle }) {
             localStorage.setItem('loginHours', JSON.stringify(newHours)); // Save to local storage
             return newHours;
         });
+    };
+
+    /**
+     * Handles changes to the break notification settings.
+     * @param {object} event - The input change event.
+     */
+    const handleBreakNotificationsChange = (event) => {
+        const { value } = event.target;
+        const numericValue = parseInt(value, 10);
+
+        // Validate the input to ensure it's a positive number
+        if (!isNaN(numericValue) && numericValue > 0) {
+            setBreakNotifications(numericValue);
+            localStorage.setItem('breakNotifications', numericValue.toString()); // Save as string
+        } else {
+            // Optionally handle invalid input
+            alert("Please enter a valid number of minutes for break notifications.");
+        }
     };
 
     /**
@@ -453,7 +518,7 @@ export default function Logout({ darkMode, handleThemeToggle }) {
     };
 
     /**
-     * Funtion to show current weekday and date on top
+     * Function to show current weekday and date on top
      * @param {Date} date - Login time
      * @returns {String} - Weekday day/month 
      */
@@ -495,7 +560,7 @@ export default function Logout({ darkMode, handleThemeToggle }) {
     /**
      * Helper function to check if a break can be deleted
      * @param {Date} breakEndTime - Break start time of that row (breakRecord.start)
-     * @returns {Boolean} - Disable delete button o not
+     * @returns {Boolean} - Disable delete button or not
      */
     const canDeleteBreak = (breakEndTime) => {
         const breakStartDate = new Date(breakEndTime);
@@ -506,7 +571,7 @@ export default function Logout({ darkMode, handleThemeToggle }) {
     };
 
     /** 
-     * Funtion to format the timer of break
+     * Function to format the timer of break
      * @param {number} seconds - Seconds from timer
      * @returns {String} - Time in the format hh:mm:ss
      */
@@ -533,6 +598,21 @@ export default function Logout({ darkMode, handleThemeToggle }) {
     };
 
     const showAddBreakManually = loginTime && !isBreakInProgress && !isLoggedOut;
+
+    const expectedLogout = expectedLogoutTime?.toLocaleTimeString('en-US', timeOptions);
+
+    useEffect(() => {
+        const now = new Date();
+        if(now > expectedLogout && !logoutHasPlayedNotificationRef.current) {
+            logoutNotificationAudioRef.current.play().catch((error) => {
+                console.error("Error playing notification sound:", error);
+            });
+            console.log(`Notification sound played at ${expectedLogout} to ${now}`);
+            logoutHasPlayedNotificationRef.current = true;
+        }else{
+            logoutHasPlayedNotificationRef.current = false;
+        }
+    }, []);
 
     return (
         <Container>
@@ -575,7 +655,7 @@ export default function Logout({ darkMode, handleThemeToggle }) {
             {loginTime && (
                 <Typography variant="p">
                     {/* Logged In:- {loginTime.toLocaleTimeString('en-US', timeOptions)}<br /> */}
-                    Expected Logout:- {expectedLogoutTime?.toLocaleTimeString('en-US', timeOptions)}
+                    Expected Logout:- {expectedLogout}
                 </Typography>
             )}
 
@@ -723,6 +803,8 @@ export default function Logout({ darkMode, handleThemeToggle }) {
                 setLoginHoursDialogOpen={setLoginHoursDialogOpen}
                 loginHoursDialogOpen={loginHoursDialogOpen}
                 loginHours={loginHours}
+                breakNotifications={breakNotifications}
+                handleBreakNotificationsChange={handleBreakNotificationsChange}
                 handleLoginHoursSave={handleLoginHoursSave}
                 handleLoginHoursChange={handleLoginHoursChange}
             />
@@ -738,8 +820,8 @@ export default function Logout({ darkMode, handleThemeToggle }) {
                 yes='Yes'
             />
 
-            {/* Record Replace dialouge */}
+            {/* Record Replace dialog */}
             <RecordExistsConfirm open={isDialogOpen} onClose={handleRecordExistsDialogClose} />
         </Container>
-    );
+    )
 }
