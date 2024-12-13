@@ -49,7 +49,7 @@ const Sidebar = ({ open, onClose }) => {
         <Box
           sx={{
             padding: '1.5rem',
-            background: 'linear-gradient(107deg, rgba(0,0,0,1) 0%, rgba(9,9,121,1) 30%, rgba(7,56,152,1) 53%, rgba(0,212,255,1) 100%)',
+            background: 'linear-gradient(135deg, rgb(126, 122, 116), rgb(166, 162, 156), rgb(196, 192, 186))',
             color: 'white',
             display: 'flex',
             alignItems: 'center',
@@ -62,7 +62,7 @@ const Sidebar = ({ open, onClose }) => {
               fontFamily: 'Roboto Slab, serif',
               fontWeight: 700,
             }}
-            variant="h6">Login Tracker
+            variant="h6">Break Remainder
           </Typography>
         </Box>
 

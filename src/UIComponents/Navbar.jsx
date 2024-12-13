@@ -5,7 +5,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 
 const Navbar = ({ onMenuClick, darkMode, handleThemeToggle }) => {
   return (
-    <AppBar position="sticky" sx={{ top: 0, left: 0, right: 0 }}>
+    <AppBar position="sticky" sx={{ top: 0, left: 0, right: 0, backgroundColor: '#7f7a79' }}>
       <Toolbar>
         <IconButton
           edge="start"
@@ -17,7 +17,7 @@ const Navbar = ({ onMenuClick, darkMode, handleThemeToggle }) => {
         </IconButton>
         <Stack flexDirection='row' justifyContent='space-between' alignItems='center' width='100%'>
           <Typography variant="h6">
-            Login Tracker
+            Break Remainder
           </Typography>
 
           {/* ThemeSwitcher component allows toggling between dark and light themes */}
