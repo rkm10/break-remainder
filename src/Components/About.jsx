@@ -121,7 +121,7 @@ const About = () => {
       <Divider sx={{ marginBottom: '0.5rem' }} />
 
       <Stack flexDirection='row' justifyContent='space-between' flexWrap='wrap' mt={2}>
-        <Button variant="contained" startIcon={<HomeIcon />} onClick={() => navigate('/break-remainder')}>
+        <Button variant="contained" startIcon={<HomeIcon />} onClick={() => navigate('/')}>
           Home
         </Button>
 
